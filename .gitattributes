@@ -1,0 +1,9 @@
+# Normalize text files
+*.md   text eol=lf
+*.py   text eol=lf
+*.yml  text eol=lf
+*.bat  text eol=crlf
+
+# Minecraft data is binary
+*.mca  binary
+*.dat  binary
