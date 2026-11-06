@@ -18,6 +18,7 @@ import sys
 import zlib
 
 SECTOR = 4096
+APP_TITLE = '✂️ Realms Trimmer'
 INHABITED_TAG = b'\x04\x00\x0dInhabitedTime'
 
 
@@ -282,7 +283,7 @@ def gui():
     from tkinter import filedialog, messagebox, scrolledtext
 
     root = tk.Tk()
-    root.title('realms-trimmer')
+    root.title(APP_TITLE)
     root.minsize(640, 420)
 
     entrada = tk.StringVar()
@@ -362,7 +363,7 @@ def gui():
         except (tk.TclError, ValueError):
             m = -1
         if m < 0:
-            messagebox.showerror('realms-trimmer', 'El margen tiene que ser un número de 0 en adelante.')
+            messagebox.showerror(APP_TITLE, 'El margen tiene que ser un número de 0 en adelante.')
             return None
         return m
 
@@ -371,7 +372,7 @@ def gui():
         err = validate(w)
         m = get_margin()
         if err:
-            messagebox.showerror('realms-trimmer', err)
+            messagebox.showerror(APP_TITLE, err)
             return
         if m is None:
             return
@@ -388,11 +389,11 @@ def gui():
         err = validate(w, d)
         m = get_margin()
         if err:
-            messagebox.showerror('realms-trimmer', err)
+            messagebox.showerror(APP_TITLE, err)
             return
         if m is None:
             return
-        if not messagebox.askokcancel('realms-trimmer',
+        if not messagebox.askokcancel(APP_TITLE,
                                       'Asegúrate de que Minecraft está cerrado.\n\n'
                                       f'Se creará una copia recortada en:\n{d}\n\n'
                                       'El mundo original no se modifica.'):
