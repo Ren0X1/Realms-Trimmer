@@ -1,22 +1,27 @@
 # ✂️ Realms Trimmer
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=flat-square&logo=python&logoColor=white) ![Tkinter](https://img.shields.io/badge/Tkinter-GUI-4B8BBE?style=flat-square) ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4?style=flat-square&logo=windows&logoColor=white) ![Minecraft](https://img.shields.io/badge/Minecraft-Java%20Edition-62B47A?style=flat-square&logo=minecraft&logoColor=white) ![Realms](https://img.shields.io/badge/Realms-world%20upload-F5A623?style=flat-square) ![Dependencies](https://img.shields.io/badge/dependencies-none-success?style=flat-square) [![Tests](https://img.shields.io/github/actions/workflow/status/Ren0X1/Realms-Trimmer/tests.yml?branch=main&style=flat-square&label=tests&logo=githubactions&logoColor=white)](https://github.com/Ren0X1/Realms-Trimmer/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/Python-3.8%2B-3776AB?style=flat-square&logo=python&logoColor=white) ![CustomTkinter](https://img.shields.io/badge/CustomTkinter-dark%20UI-2FA572?style=flat-square) ![Windows](https://img.shields.io/badge/Windows-10%20%2F%2011-0078D4?style=flat-square&logo=windows&logoColor=white) ![Minecraft](https://img.shields.io/badge/Minecraft-Java%20Edition-62B47A?style=flat-square&logo=minecraft&logoColor=white) ![Realms](https://img.shields.io/badge/Realms-world%20upload-F5A623?style=flat-square) [![Tests](https://img.shields.io/github/actions/workflow/status/Ren0X1/Realms-Trimmer/tests.yml?branch=main&style=flat-square&label=tests&logo=githubactions&logoColor=white)](https://github.com/Ren0X1/Realms-Trimmer/actions/workflows/tests.yml)
 
 > **Realms upload reaching 100%, then "verifying world"… and "timed out"?** Your world is probably full of chunks nobody has ever walked into. This makes a trimmed copy that Realms accepts. 🎮
 
 Pre-generating a world (with **Chunky**, for example) fills it with thousands of chunks that no player has ever visited. The upload itself finishes, but Realms takes so long to verify all of them on its side that it gives up. **Realms Trimmer** keeps only the chunks you have actually played in, plus a safety margin, and writes the result to a **new folder**. Your original world is never touched. ⚡
 
+<p align="center"><img src="assets/screenshot.png" alt="Realms Trimmer window" width="620"></p>
+
 ---
 
 ## 🚀 Quick start
 
-1. 🐍 Install [Python 3](https://www.python.org/downloads/) if you don't have it (no extra packages needed).
-2. ❌ **Close Minecraft.**
-3. 🖱️ Double-click `realms_trimmer.py`.
-4. 📂 **Mundo (entrada)** → pick your world folder (inside `.minecraft/saves/`).
-5. 📁 **Copia (salida)** → fills itself in as `<world> (Realms)`; change it if you like.
-6. ✂️ Click **Analizar** to preview, or **Recortar** to create the trimmed copy.
-7. ☁️ In Minecraft: **Realms → Configure → Worlds → Upload world** and pick the copy.
+1. 🐍 Install [Python 3](https://www.python.org/downloads/) if you don't have it.
+2. 📦 Install the UI library once: `pip install -r requirements.txt`
+3. ❌ **Close Minecraft.**
+4. 🖱️ Double-click `realms_trimmer.py`.
+5. 🌍 **Mundo** → pick your world folder (inside `.minecraft/saves/`).
+6. 📁 **Copia** → fills itself in as `<world> (Realms)`; change it if you like.
+7. ✂️ Set the **Margen** slider, then click **Analizar** to preview or **Recortar** to create the trimmed copy. A progress bar shows how it's going.
+8. ☁️ In Minecraft: **Realms → Configure → Worlds → Upload world** and pick the copy.
+
+> 🪟 No CustomTkinter installed? It still opens, just with the plain classic window. The command line needs nothing at all.
 
 > 💡 Don't open the trimmed copy in singleplayer before uploading it, or the game will start generating chunks again.
 
@@ -70,8 +75,21 @@ The removed chunks regenerate on their own the first time someone walks there on
 ## 📦 Requirements
 
 - 🐍 Python 3.8+ (Tkinter ships with the standard Windows installer)
+- 🎨 [CustomTkinter](https://github.com/TomSchimansky/CustomTkinter) + Pillow for the dark window (`pip install -r requirements.txt`). Optional: without them the classic window is used
 - 🟩 A Minecraft **Java Edition** world
 - ❌ Minecraft closed while trimming
+
+---
+
+## 🗂️ Files
+
+| File | Purpose |
+|------|---------|
+| `realms_trimmer.py` | The app: window + command line |
+| `assets/icon.ico`, `assets/icon.png` | App icon (window, taskbar and header) |
+| `tools/make_icon.py` | Regenerates the icon with Pillow |
+| `tests/` | Unit tests on a synthetic world |
+| `requirements.txt` | UI dependencies |
 
 ---
 

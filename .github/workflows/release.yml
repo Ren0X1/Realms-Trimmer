@@ -45,7 +45,7 @@ jobs:
         run: |
           VERSION="${{ steps.ver.outputs.value }}"
           NAME="Realms-Trimmer-${VERSION}.zip"
-          zip -q "${NAME}" realms_trimmer.py README.md CHANGELOG.md
+          zip -q "${NAME}" realms_trimmer.py requirements.txt README.md CHANGELOG.md assets/icon.ico assets/icon.png
           echo "name=${NAME}" >> "$GITHUB_OUTPUT"
           echo "### 📦 Package built" >> "$GITHUB_STEP_SUMMARY"
           echo "- File: \`${NAME}\`" >> "$GITHUB_STEP_SUMMARY"
@@ -58,8 +58,8 @@ jobs:
             echo "## ✂️ Realms Trimmer — ${VERSION}"
             echo ""
             echo "1. Install [Python 3](https://www.python.org/downloads/) if you don't have it."
-            echo "2. Unzip and **double-click \`realms_trimmer.py\`**."
-            echo "3. Pick your world folder and an output folder, then click **Recortar**."
+            echo "2. Unzip and install the UI once: \`pip install -r requirements.txt\`"
+            echo "3. **Double-click \`realms_trimmer.py\`**, pick your world and an output folder, then click **Recortar**."
             echo "4. Upload the trimmed copy from Minecraft: **Realms → Configure → Worlds → Upload world**."
             echo ""
             echo "### 📜 Changelog"

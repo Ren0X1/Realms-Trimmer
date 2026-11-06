@@ -7,3 +7,5 @@
 # Minecraft data is binary
 *.mca  binary
 *.dat  binary
+*.png  binary
+*.ico  binary

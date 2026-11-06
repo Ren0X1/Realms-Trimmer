@@ -130,11 +130,13 @@ def mca_files(folder):
 # Análisis
 # --------------------------------------------------------------------------
 
-def scan_dimension(dim_dir):
+def scan_dimension(dim_dir, tick=None):
     """Devuelve (todos_los_chunks, chunks_visitados, chunks_ilegibles)."""
     all_chunks, visited, unreadable = set(), set(), 0
     region_dir = os.path.join(dim_dir, 'region')
     for fn in mca_files(region_dir):
+        if tick:
+            tick()
         rx, rz = region_coords(fn)
         for i, (payload, _) in read_region(os.path.join(region_dir, fn)).items():
             c = chunk_coords(rx, rz, i)
@@ -168,10 +170,29 @@ def folder_size_mb(path):
     return total / (1024 * 1024)
 
 
-def plan(world, margin):
+class Progress:
+    """Reparte una barra 0..1 entre pasos; llama a callback(fracción)."""
+
+    def __init__(self, callback, total, start=0.0, end=1.0):
+        self.callback, self.total, self.start, self.end = callback, max(total, 1), start, end
+        self.done = 0
+
+    def tick(self):
+        self.done += 1
+        if self.callback:
+            self.callback(self.start + (self.end - self.start) * min(self.done / self.total, 1.0))
+
+
+def count_region_files(world, subs=('region',)):
+    return sum(len(mca_files(os.path.join(d, s)))
+               for d in find_dimensions(world).values() for s in subs)
+
+
+def plan(world, margin, progress=None, start=0.0, end=1.0):
     result = {}
+    bar = Progress(progress, count_region_files(world), start, end)
     for name, d in find_dimensions(world).items():
-        all_chunks, visited, unreadable = scan_dimension(d)
+        all_chunks, visited, unreadable = scan_dimension(d, bar.tick)
         keep = expand(visited, margin) & all_chunks
         result[name] = (d, all_chunks, visited, keep, unreadable)
     return result
@@ -211,19 +232,24 @@ def rename_level(level_dat, new_name):
         f.write(gzip.compress(d))
 
 
-def trim(world, dest, margin, new_name, log=print):
+def trim(world, dest, margin, new_name, log=print, progress=None):
     log('Analizando chunks...')
-    result = plan(world, margin)
+    result = plan(world, margin, progress, 0.0, 0.45)
     print_plan(result, margin, log)
 
     log(f'\nCopiando mundo a: {dest}')
     shutil.copytree(world, dest, ignore=shutil.ignore_patterns('session.lock', 'realms-upload.log'))
+    if progress:
+        progress(0.6)
 
+    log('Recortando regiones...')
+    bar = Progress(progress, count_region_files(dest, ('region', 'entities', 'poi')), 0.6, 0.98)
     for name, (src_dim, _, _, keep, _) in result.items():
         dst_dim = os.path.join(dest, os.path.relpath(src_dim, world))
         for sub in ('region', 'entities', 'poi'):
             folder = os.path.join(dst_dim, sub)
             for fn in mca_files(folder):
+                bar.tick()
                 rx, rz = region_coords(fn)
                 path = os.path.join(folder, fn)
                 chunks = read_region(path)
@@ -244,6 +270,8 @@ def trim(world, dest, margin, new_name, log=print):
     log(f'\nTamaño original: {folder_size_mb(world):,.1f} MB')
     log(f'Tamaño recortado: {folder_size_mb(dest):,.1f} MB')
     log(f'Listo. Sube a Realms el mundo "{new_name}" sin abrirlo antes en un jugador.')
+    if progress:
+        progress(1.0)
 
 
 # --------------------------------------------------------------------------
@@ -276,7 +304,241 @@ def default_dest(world):
 # Ventana (doble clic)
 # --------------------------------------------------------------------------
 
+ASSETS = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'assets')
+ICON_ICO = os.path.join(ASSETS, 'icon.ico')
+ICON_PNG = os.path.join(ASSETS, 'icon.png')
+
+
+def apply_icon(root):
+    """Pone el icono en la ventana y en la barra de tareas (si existe)."""
+    if sys.platform == 'win32':
+        try:  # que Windows agrupe la ventana con nuestro icono y no con el de Python
+            import ctypes
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID('Ren0X1.RealmsTrimmer')
+        except Exception:
+            pass
+        if os.path.isfile(ICON_ICO):
+            try:
+                root.iconbitmap(ICON_ICO)
+            except Exception:
+                pass
+    if os.path.isfile(ICON_PNG):
+        try:
+            import tkinter as tk
+            root._icon_img = tk.PhotoImage(file=ICON_PNG)
+            root.iconphoto(True, root._icon_img)
+        except Exception:
+            pass
+
+
 def gui():
+    try:
+        import customtkinter  # noqa: F401
+    except ImportError:
+        return gui_classic()
+    return gui_modern()
+
+
+def gui_modern():
+    import queue
+    import threading
+    from tkinter import filedialog, messagebox
+    import customtkinter as ctk
+
+    ctk.set_appearance_mode('dark')
+    ctk.set_default_color_theme('green')
+
+    root = ctk.CTk()
+    root.title(APP_TITLE)
+    root.geometry('760x620')
+    root.minsize(640, 540)
+    apply_icon(root)
+    # CustomTkinter vuelve a poner su icono al arrancar; lo reponemos después
+    root.after(250, lambda: apply_icon(root))
+
+    entrada = ctk.StringVar()
+    salida = ctk.StringVar()
+    margen = ctk.IntVar(value=3)
+    msgs = queue.Queue()
+    MONO = ('Consolas', 12) if sys.platform == 'win32' else ('Menlo', 12)
+
+    root.grid_columnconfigure(0, weight=1)
+    root.grid_rowconfigure(3, weight=1)
+
+    # ---- Cabecera -------------------------------------------------------
+    header = ctk.CTkFrame(root, fg_color='transparent')
+    header.grid(row=0, column=0, sticky='ew', padx=24, pady=(20, 8))
+    logo = None
+    try:
+        from PIL import Image
+        if os.path.isfile(ICON_PNG):
+            logo = ctk.CTkImage(Image.open(ICON_PNG), size=(56, 56))
+    except Exception:
+        logo = None
+    if logo:
+        ctk.CTkLabel(header, image=logo, text='').pack(side='left', padx=(0, 14))
+    titles = ctk.CTkFrame(header, fg_color='transparent')
+    titles.pack(side='left')
+    ctk.CTkLabel(titles, text='Realms Trimmer', font=ctk.CTkFont(size=26, weight='bold')).pack(anchor='w')
+    ctk.CTkLabel(titles, text='Recorta tu mundo para subirlo a Realms sin "timed out"',
+                 text_color=('gray35', 'gray65'), font=ctk.CTkFont(size=13)).pack(anchor='w')
+
+    # ---- Formulario ------------------------------------------------------
+    card = ctk.CTkFrame(root, corner_radius=14)
+    card.grid(row=1, column=0, sticky='ew', padx=24, pady=8)
+    card.grid_columnconfigure(1, weight=1)
+
+    def pick_in():
+        d = filedialog.askdirectory(title='Elige la carpeta de tu mundo')
+        if d:
+            entrada.set(os.path.normpath(d))
+            salida.set(default_dest(os.path.normpath(d)))
+
+    def pick_out():
+        d = filedialog.askdirectory(title='Elige dónde guardar la copia')
+        if d:
+            name = os.path.basename(entrada.get()) + ' (Realms)' if entrada.get() else 'Mundo (Realms)'
+            salida.set(os.path.join(os.path.normpath(d), name))
+
+    label_font = ctk.CTkFont(size=13, weight='bold')
+    rows = (('🌍  Mundo', entrada, pick_in, 'Carpeta del mundo en .minecraft/saves'),
+            ('📁  Copia', salida, pick_out, 'Dónde se crea la copia recortada'))
+    for r, (text, var, cmd, hint) in enumerate(rows):
+        ctk.CTkLabel(card, text=text, font=label_font).grid(row=r, column=0, sticky='w', padx=(18, 10), pady=(16 if r == 0 else 8, 0))
+        ctk.CTkEntry(card, textvariable=var, height=36, placeholder_text=hint).grid(
+            row=r, column=1, sticky='ew', pady=(16 if r == 0 else 8, 0))
+        ctk.CTkButton(card, text='Examinar', width=100, height=36, command=cmd,
+                      fg_color=('gray75', 'gray30'), hover_color=('gray65', 'gray25'),
+                      text_color=('gray10', 'gray95')).grid(
+            row=r, column=2, padx=(10, 18), pady=(16 if r == 0 else 8, 0))
+
+    ctk.CTkLabel(card, text='✂️  Margen', font=label_font).grid(row=2, column=0, sticky='w', padx=(18, 10), pady=(14, 16))
+    margin_row = ctk.CTkFrame(card, fg_color='transparent')
+    margin_row.grid(row=2, column=1, columnspan=2, sticky='ew', padx=(0, 18), pady=(14, 16))
+    margin_row.grid_columnconfigure(0, weight=1)
+    margin_value = ctk.CTkLabel(margin_row, text='3 chunks', width=80)
+
+    def on_slide(v):
+        margen.set(int(round(float(v))))
+        margin_value.configure(text=f'{margen.get()} chunk' + ('' if margen.get() == 1 else 's'))
+
+    slider = ctk.CTkSlider(margin_row, from_=0, to=8, number_of_steps=8, command=on_slide)
+    slider.set(3)
+    slider.grid(row=0, column=0, sticky='ew')
+    margin_value.grid(row=0, column=1, padx=(10, 0))
+
+    # ---- Acciones y progreso --------------------------------------------
+    actions = ctk.CTkFrame(root, fg_color='transparent')
+    actions.grid(row=2, column=0, sticky='ew', padx=24, pady=(8, 4))
+    actions.grid_columnconfigure(2, weight=1)
+    btn_analyze = ctk.CTkButton(actions, text='🔍  Analizar', width=140, height=40,
+                                fg_color='transparent', border_width=2,
+                                text_color=('gray10', 'gray95'),
+                                font=ctk.CTkFont(size=14, weight='bold'))
+    btn_trim = ctk.CTkButton(actions, text='✂️  Recortar', width=160, height=40,
+                             font=ctk.CTkFont(size=14, weight='bold'))
+    btn_analyze.grid(row=0, column=0)
+    btn_trim.grid(row=0, column=1, padx=(10, 0))
+    status = ctk.CTkLabel(actions, text='Listo', text_color=('gray35', 'gray65'), anchor='e')
+    status.grid(row=0, column=2, sticky='e')
+    bar = ctk.CTkProgressBar(actions, height=10)
+    bar.set(0)
+    bar.grid(row=1, column=0, columnspan=3, sticky='ew', pady=(12, 0))
+
+    # ---- Registro --------------------------------------------------------
+    log_box = ctk.CTkTextbox(root, font=MONO, corner_radius=12, wrap='none')
+    log_box.grid(row=3, column=0, sticky='nsew', padx=24, pady=(8, 20))
+    log_box.insert('end', '1. Cierra Minecraft.\n2. Elige tu mundo.\n3. Pulsa Analizar para ver cuánto se recorta, '
+                          'o Recortar para crear la copia.\n')
+    log_box.configure(state='disabled')
+
+    # ---- Lógica ----------------------------------------------------------
+    def log(text):
+        msgs.put(('log', text))
+
+    def progress(f):
+        msgs.put(('progress', f))
+
+    def set_busy(busy, text):
+        state = 'disabled' if busy else 'normal'
+        btn_analyze.configure(state=state)
+        btn_trim.configure(state=state)
+        slider.configure(state=state)
+        status.configure(text=text)
+
+    def pump():
+        try:
+            while True:
+                kind, value = msgs.get_nowait()
+                if kind == 'log':
+                    log_box.configure(state='normal')
+                    log_box.insert('end', value + '\n')
+                    log_box.see('end')
+                    log_box.configure(state='disabled')
+                elif kind == 'progress':
+                    bar.set(value)
+                    status.configure(text=f'{value * 100:.0f}%')
+                elif kind == 'done':
+                    set_busy(False, value)
+        except queue.Empty:
+            pass
+        root.after(80, pump)
+
+    def run(job, busy_text, done_text):
+        set_busy(True, busy_text)
+        bar.set(0)
+        log_box.configure(state='normal')
+        log_box.delete('1.0', 'end')
+        log_box.configure(state='disabled')
+
+        def worker():
+            result = done_text
+            try:
+                job()
+            except Exception as e:  # mostrar cualquier fallo en la ventana
+                log(f'ERROR: {e}')
+                result = '❌ Error'
+            msgs.put(('done', result))
+        threading.Thread(target=worker, daemon=True).start()
+
+    def do_analyze():
+        w = entrada.get().strip()
+        err = validate(w)
+        if err:
+            messagebox.showerror(APP_TITLE, err)
+            return
+        m = margen.get()
+
+        def job():
+            log('Analizando chunks...')
+            print_plan(plan(w, m, progress), m, log)
+            log(f'Tamaño actual: {folder_size_mb(w):,.1f} MB')
+        run(job, 'Analizando...', '✅ Análisis terminado')
+
+    def do_trim():
+        w = entrada.get().strip()
+        d = salida.get().strip()
+        err = validate(w, d)
+        if err:
+            messagebox.showerror(APP_TITLE, err)
+            return
+        if not messagebox.askokcancel(APP_TITLE,
+                                      'Asegúrate de que Minecraft está cerrado.\n\n'
+                                      f'Se creará una copia recortada en:\n{d}\n\n'
+                                      'El mundo original no se modifica.'):
+            return
+        m = margen.get()
+        run(lambda: trim(w, d, m, os.path.basename(d), log, progress),
+            'Recortando...', '✅ Copia creada')
+
+    btn_analyze.configure(command=do_analyze)
+    btn_trim.configure(command=do_trim)
+
+    pump()
+    root.mainloop()
+
+
+def gui_classic():
     import queue
     import threading
     import tkinter as tk
@@ -285,6 +547,7 @@ def gui():
     root = tk.Tk()
     root.title(APP_TITLE)
     root.minsize(640, 420)
+    apply_icon(root)
 
     entrada = tk.StringVar()
     salida = tk.StringVar()
