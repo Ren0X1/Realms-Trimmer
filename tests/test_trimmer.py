@@ -97,5 +97,39 @@ class TrimTests(unittest.TestCase):
         self.assertIsNotNone(rt.validate(world, os.path.join(world, 'inside')))
 
 
+class LanguageTests(unittest.TestCase):
+    def tearDown(self):
+        rt.set_language(rt.DEFAULT_LANG)
+
+    def test_every_string_has_every_language(self):
+        import string
+        for key, entry in rt.STRINGS.items():
+            self.assertEqual(set(entry), set(rt.LANGUAGES), key)
+            fields = {lang: {f for _, f, _, _ in string.Formatter().parse(text) if f}
+                      for lang, text in entry.items()}
+            self.assertEqual(len({frozenset(v) for v in fields.values()}), 1, f'{key}: {fields}')
+
+    def test_default_is_english(self):
+        self.assertEqual(rt.DEFAULT_LANG, 'en')
+        self.assertEqual(rt.t('analyze'), 'Analyze')
+
+    def test_switch_and_fallback(self):
+        rt.set_language('es')
+        self.assertEqual(rt.t('analyze'), 'Analizar')
+        rt.set_language('xx')
+        self.assertEqual(rt.get_language(), 'en')
+
+    def test_russian_plural(self):
+        rt.set_language('ru')
+        self.assertEqual(rt.chunks_label(1), '1 чанк')
+        self.assertEqual(rt.chunks_label(3), '3 чанка')
+        self.assertEqual(rt.chunks_label(5), '5 чанков')
+        self.assertEqual(rt.chunks_label(11), '11 чанков')
+
+    def test_translated_errors(self):
+        rt.set_language('zh')
+        self.assertIn('level.dat', rt.validate('/nope'))
+
+
 if __name__ == '__main__':
     unittest.main()

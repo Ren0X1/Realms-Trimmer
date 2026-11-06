@@ -16,9 +16,9 @@ Pre-generating a world (with **Chunky**, for example) fills it with thousands of
 2. 📦 Install the UI library once: `pip install -r requirements.txt`
 3. ❌ **Close Minecraft.**
 4. 🖱️ Double-click `realms_trimmer.py`.
-5. 🌍 **Mundo** → pick your world folder (inside `.minecraft/saves/`).
-6. 📁 **Copia** → fills itself in as `<world> (Realms)`; change it if you like.
-7. ✂️ Set the **Margen** slider, then click **Analizar** to preview or **Recortar** to create the trimmed copy. A progress bar shows how it's going.
+5. 🌍 **World** → pick your world folder (inside `.minecraft/saves/`).
+6. 📁 **Output** → fills itself in as `<world> (Realms)`; change it if you like.
+7. ✂️ Set the **Margin** slider, then click **Analyze** to preview or **Trim** to create the trimmed copy. A progress bar shows how it's going.
 8. ☁️ In Minecraft: **Realms → Configure → Worlds → Upload world** and pick the copy.
 
 > 🪟 No CustomTkinter installed? It still opens, just with the plain classic window. The command line needs nothing at all.
@@ -32,18 +32,33 @@ Pre-generating a world (with **Chunky**, for example) fills it with thousands of
 ```bat
 python realms_trimmer.py "C:\...\saves\My World"                          :: creates "My World (Realms)" next to it
 python realms_trimmer.py "C:\...\saves\My World" "D:\out\My World Realms" :: custom output folder
-python realms_trimmer.py "C:\...\saves\My World" --analizar               :: preview only, writes nothing
+python realms_trimmer.py "C:\...\saves\My World" --analyze                :: preview only, writes nothing
+python realms_trimmer.py "C:\...\saves\My World" --lang es                :: output in Spanish
 ```
 
 | Option | What it does |
 |--------|--------------|
-| `entrada` | World folder to read from |
-| `salida` | Folder where the trimmed copy is created (optional) |
-| `--margen N` | Chunks of margin kept around every visited chunk (default **3**). Lower = smaller world |
-| `--nombre TEXT` | World name shown in the game's world list (default: output folder name) |
-| `--analizar` | Only prints how much would be trimmed |
+| `input` | World folder to read from |
+| `output` | Folder where the trimmed copy is created (optional) |
+| `--margin N` | Chunks of margin kept around every visited chunk (default **3**). Lower = smaller world |
+| `--name TEXT` | World name shown in the game's world list (default: output folder name) |
+| `--analyze` | Only prints how much would be trimmed |
+| `--lang CODE` | `en`, `es`, `ru` or `zh` (default: the language picked in the window, else English) |
 
-Running it with no arguments opens the window. 🪟
+The Spanish spellings `--margen`, `--nombre` and `--analizar` still work. Running it with no arguments opens the window. 🪟
+
+---
+
+## 🌐 Languages
+
+| Code | Language |
+|------|----------|
+| `en` | 🇬🇧 English (default) |
+| `es` | 🇪🇸 Español |
+| `ru` | 🇷🇺 Русский |
+| `zh` | 🇨🇳 中文 |
+
+Pick it from the menu in the top-right corner of the window. The choice is saved in `~/.realms_trimmer.json` and also used by the command line.
 
 ---
 

@@ -3,6 +3,13 @@
 All notable changes to Realms Trimmer are listed here.
 Versions use the `vMAJOR.MINOR.PATCH` scheme.
 
+## v1.1.0 — 2026-11-06
+
+- 🌐 Four languages: English (default), Español, Русский and 中文, with a picker in the window that remembers your choice
+- ⌨️ CLI options in English (`--margin`, `--name`, `--analyze`) plus `--lang`; the Spanish spellings still work
+- 🎨 Cleaner window title and subtitle
+- 🧪 Tests check every text exists in all four languages with the same placeholders
+
 ## v1.0.0 — 2026-11-06
 
 - 🆕 Trimmed copy of a world keeping only visited chunks (`InhabitedTime > 0`) plus a configurable margin
